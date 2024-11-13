@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forest Coverage by Countries 1990-2020</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .chart {
+      margin-bottom: 40px;
+      display: inline-block;
+      width: 45%;
+      vertical-align: top;
+    }
+    svg {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .axis path,
+    .axis line {
+      fill: none;
+      shape-rendering: crispEdges;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .container {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Forest Coverage by Country: 1990-2020</h1>
+  <div class="container">
+    <!-- Line Chart -->
+    <div class="chart" id="line-chart">
+      <div class="title">Forest Area Change Over Time for Selected Countries</div>
+    </div>
+
+    <!-- Bar Chart -->
+    <div class="chart" id="bar-chart">
+      <div class="title">Forest Area by Country in 2020</div>
+    </div>
+
+    <!-- Scatter Plot -->
+    <div class="chart" id="scatter-plot">
+      <div class="title">Population Density vs Forest Area (2020)</div>
+    </div>
+
+    <!-- Pie Chart -->
+    <div class="chart" id="pie-chart">
+      <div class="title">Forest Area Distribution by Continent in 2020</div>
+    </div>
+  </div>
+
+  <script>
+    // Load the dataset
+    d3.csv("forest-cover-v1.csv").then(function(data) {
+      const years = d3.range(1990, 2021).map(year => `Forest Area ${year}`);
+      
+      // Convert forest area columns to numbers
+      data.forEach(d => {
+        years.forEach(year => {
+          d[year] = +d[year];
+        });
+      });
+
+      const width = 500, height = 300, margin = { top: 20, right: 20, bottom: 50, left: 50 };
+
+      // Line Chart: Forest Area Change Over Time for Selected Countries
+      const svg1 = d3.select("#line-chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const countries = ["Brazil", "India", "China", "USA"];
+      const countryData = data.filter(d => countries.includes(d["Country Name"]));
+      const maxForestArea = d3.max(countryData, d => d3.max(years, year => d[year]));
+
+      const x1 = d3.scaleLinear().domain([1990, 2020]).range([0, width]);
+      const y1 = d3.scaleLinear().domain([0, maxForestArea]).range([height, 0]);
+
+      svg1.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x1).ticks(10).tickFormat(d3.format("d")));
+
+      svg1.append("g").call(d3.axisLeft(y1));
+
+      const line = d3.line()
+        .x((d, i) => x1(1990 + i))
+        .y(d => y1(d));
+
+      countryData.forEach(country => {
+        svg1.append("path")
+          .datum(years.map(year => country[year]))
+          .attr("fill", "none")
+          .attr("stroke", d3.schemeCategory10[countries.indexOf(country["Country Name"])])
+          .attr("stroke-width", 1.5)
+          .attr("d", line);
+
+        svg1.append("text")
+          .attr("x", width)
+          .attr("y", y1(country["Forest Area 2020"]))
+          .attr("dy", "0.35em")
+          .style("fill", d3.schemeCategory10[countries.indexOf(country["Country Name"])])
+          .style("font-size", "10px")
+          .text(country["Country Name"]);
+      });
+
+      // Bar Chart: Forest Area in 2020 by Country
+      const svg2 = d3.select("#bar-chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const selectedYear = "Forest Area 2020";
+      const sortedData = data.sort((a, b) => b[selectedYear] - a[selectedYear]).slice(0, 10);
+
+      const x2 = d3.scaleBand().domain(sortedData.map(d => d["Country Name"])).range([0, width]).padding(0.1);
+      const y2 = d3.scaleLinear().domain([0, d3.max(sortedData, d => d[selectedYear])]).range([height, 0]);
+
+      svg2.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x2).tickSize(0))
+        .selectAll("text")
+        .attr("transform", "rotate(-45)")
+        .style("text-anchor", "end");
+
+      svg2.append("g").call(d3.axisLeft(y2));
+
+      svg2.selectAll(".bar")
+        .data(sortedData)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x2(d["Country Name"]))
+        .attr("y", d => y2(d[selectedYear]))
+        .attr("width", x2.bandwidth())
+        .attr("height", d => height - y2(d[selectedYear]))
+        .attr("fill", "steelblue");
+
+      // Scatter Plot: Population Density vs Forest Area (2020)
+      const svg3 = d3.select("#scatter-plot")
+  .append("svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+const x3 = d3.scaleLinear()
+  .domain([0, d3.max(data, d => d["Population Density"])])
+  .range([0, width]);
+
+const y3 = d3.scaleLinear()
+  .domain([0, d3.max(data, d => d["Forest Area 2020"])])
+  .range([height, 0]);
+
+// Add X axis
+svg3.append("g")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(x3));
+
+// Add Y axis
+svg3.append("g")
+  .call(d3.axisLeft(y3));
+
+// Add X axis label
+svg3.append("text")
+  .attr("transform", `translate(${width / 2},${height + margin.bottom - 5})`)
+  .style("text-anchor", "middle")
+  .text("Population Density (per km²)");
+
+// Add Y axis label
+svg3.append("text")
+  .attr("transform", "rotate(-90)")
+  .attr("y", 0 - margin.left + 10)
+  .attr("x", 0 - height / 2)
+  .style("text-anchor", "middle")
+  .text("Forest Area (2020)");
+
+// Add scatter plot points (circles)
+svg3.selectAll("circle")
+  .data(data)
+  .enter().append("circle")
+  .attr("cx", d => x3(d["Population Density"]))
+  .attr("cy", d => y3(d["Forest Area 2020"]))
+  .attr("r", 4)
+  .attr("fill", "green")
+  .attr("opacity", 0.6);
+
+      // Pie Chart: Forest Area Distribution by Continent in 2020
+      const svg4 = d3.select("#pie-chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${width / 2 + margin.left},${height / 2 + margin.top})`);
+
+      // Create continent-level data using d3.rollup
+      const continentData = d3.rollup(data, v => d3.sum(v, d => d["Forest Area 2020"]), d => d.Continent);
+
+      const pie = d3.pie().value(d => d[1]);
+      const arc = d3.arc().outerRadius(width*2/6 ).innerRadius(0);
+
+      const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+      svg4.selectAll(".arc")
+        .data(pie(Array.from(continentData.entries())))
+        .enter().append("g")
+        .attr("class", "arc")
+        .append("path")
+        .attr("d", arc)
+        .attr("fill", (d, i) => color(i));
+
+      // Add text labels to pie slices
+      svg4.selectAll(".arc")
+        .append("text")
+        .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+        .attr("dy", ".35em")
+        .style("text-anchor", "middle")
+        .text(function(d) { return d.data[0]; });
+      
+    }).catch(function(error) {
+      console.error("Error loading or processing the data: ", error);
+    });
+  </script>
+</body>
+</html>
