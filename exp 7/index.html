@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Risk Dataset Visualizations</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    .chart {
+      display: inline-block;
+      margin: 20px;
+      width: 45%;
+      height: 300px;
+    }
+
+    svg {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .bar {
+      fill: steelblue;
+    }
+
+    .bar:hover {
+      fill: orange;
+    }
+
+    .axis text {
+      font-size: 12px;
+    }
+
+    .axis path, .axis line {
+      fill: none;
+      shape-rendering: crispEdges;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .pie-chart text {
+      font-size: 10px; /* Reduced font size for pie chart text */
+    }
+
+    .scatter-circle {
+      fill: #69b3a2;
+    }
+
+    .x-axis text,
+    .y-axis text {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Credit Risk Dataset Visualizations</h1>
+
+  <!-- Layout for 2 rows and 2 columns -->
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+    <div class="chart" id="loan-status-chart">
+      <div class="title">Loan Status Distribution</div>
+    </div>
+    <div class="chart" id="scatter-plot">
+      <div class="title">Loan Amount vs Income</div>
+    </div>
+    <div class="chart" id="loan-intent-pie">
+      <div class="title">Loan Intent Distribution</div>
+    </div>
+    <div class="chart" id="loan-interest-histogram">
+      <div class="title">Loan Interest Rate Distribution</div>
+    </div>
+  </div>
+
+  <script>
+    d3.csv("credit_risk_dataset.csv").then(function(data) {
+      // Preprocessing data (convert necessary columns to numerical values)
+      data.forEach(function(d) {
+        d.person_age = +d.person_age;
+        d.person_income = +d.person_income;
+        d.loan_amnt = +d.loan_amnt;
+        d.loan_int_rate = +d.loan_int_rate;
+        d.loan_status = +d.loan_status; // 0 for non-default, 1 for default
+        d.loan_intent = d.loan_intent.trim(); // Remove extra spaces
+      });
+
+      // ============================
+      // 1. Bar Chart for Loan Status
+      // ============================
+      const loanStatusCount = d3.groups(data, d => d.loan_status).map(([key, value]) => ({
+        key: key === 0 ? 'Non-Default' : 'Default',
+        value: value.length
+      }));
+
+      const margin = { top: 20, right: 20, bottom: 50, left: 60 };
+      const width = 400 - margin.left - margin.right;
+      const height = 300 - margin.top - margin.bottom;
+
+      const x = d3.scaleBand()
+        .domain(loanStatusCount.map(d => d.key))
+        .range([0, width])
+        .padding(0.1);
+      const y = d3.scaleLinear()
+        .domain([0, d3.max(loanStatusCount, d => d.value)])
+        .nice()
+        .range([height, 0]);
+
+      const svg1 = d3.select("#loan-status-chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      svg1.selectAll(".bar")
+        .data(loanStatusCount)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.key))
+        .attr("y", d => y(d.value))
+        .attr("width", x.bandwidth())
+        .attr("height", d => height - y(d.value));
+
+      svg1.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
+
+      svg1.append("g")
+        .attr("class", "y-axis")
+        .call(d3.axisLeft(y));
+
+      svg1.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 40)
+        .attr("text-anchor", "middle")
+        .text("Loan Status");
+
+      svg1.append("text")
+        .attr("x", -height / 2)
+        .attr("y", -50)
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .text("Count");
+
+      // ============================
+      // 2. Scatter Plot for Loan Amount vs Income
+      // ============================
+      const svg2 = d3.select("#scatter-plot")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const xScatter = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.person_income)])
+        .range([0, width]);
+      const yScatter = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.loan_amnt)])
+        .range([height, 0]);
+
+      svg2.selectAll("circle")
+        .data(data)
+        .enter().append("circle")
+        .attr("class", "scatter-circle")
+        .attr("cx", d => xScatter(d.person_income))
+        .attr("cy", d => yScatter(d.loan_amnt))
+        .attr("r", 3);
+
+        svg2.append("g")
+  .attr("transform", `translate(0,${height})`)
+  .call(d3.axisBottom(xScatter).ticks(5));
+
+
+      svg2.append("g")
+        .call(d3.axisLeft(yScatter));
+
+      svg2.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 40)
+        .attr("text-anchor", "middle")
+        .text("Income");
+
+      svg2.append("text")
+        .attr("x", -height / 2)
+        .attr("y", -50)
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .text("Loan Amount");
+
+      // ============================
+      // 3. Pie Chart for Loan Intent
+      // ============================
+      // Prepare loan intent data and scales
+      const loanIntentCount = d3.groups(data, d => d.loan_intent).map(([key, value]) => ({
+    key: key,
+    value: value.length
+}));
+
+const radius = Math.min(width, height) / 2;
+
+const pie = d3.pie()
+    .value(d => d.value);
+
+const arc = d3.arc()
+    .outerRadius(radius - 10)
+    .innerRadius(0);
+
+// Adjust arcLabel to bring labels closer
+const arcLabel = d3.arc()
+    .outerRadius(radius-5) // Place labels slightly closer
+    .innerRadius(radius-5); // Matching inner radius for alignment
+
+// SVG container
+const svg3 = d3.select("#loan-intent-pie")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .append("g")
+    .attr("transform", `translate(${width / 2},${height / 2})`);
+
+const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+const path = svg3.selectAll(".arc")
+    .data(pie(loanIntentCount))
+    .enter().append("g")
+    .attr("class", "arc");
+
+// Draw the pie slices
+path.append("path")
+    .attr("d", arc)
+    .style("fill", d => color(d.data.key));
+
+// Add text labels closer outside the slices
+path.append("text")
+    .attr("transform", d => `translate(${arcLabel.centroid(d)})`)
+    .attr("dy", ".35em")
+    .style("font-size", "10px")
+    .style("font-weight", "normal")
+    .style("font-family", "Arial")
+    .style("text-anchor", d => (d.endAngle + d.startAngle) / 2 > Math.PI ? "end" : "start")
+    .text(d => d.data.key);
+
+// Optional: Add leader lines, adjusting length to suit the new label position
+path.append("polyline")
+    .attr("stroke", "gray")
+    .attr("fill", "none")
+    .attr("points", d => {
+        const posA = arc.centroid(d); // Midpoint of slice
+        const posB = arcLabel.centroid(d); // Position for label
+        const posC = [...posB];
+        posC[0] = radius * 1.15 * ((d.startAngle + d.endAngle) / 2 < Math.PI ? 1 : -1); // Slightly shorter line
+        return [posA, posB, posC];
+    });
+
+      // ============================
+      // 4. Histogram for Loan Interest Rate Distribution
+      // ============================
+      const svg4 = d3.select("#loan-interest-histogram")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      const xHist = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.loan_int_rate)])
+        .range([0, width]);
+
+      const histogram = d3.histogram()
+        .value(d => d.loan_int_rate)
+        .domain(xHist.domain())
+        .thresholds(10);
+
+      const bins = histogram(data);
+
+      const yHist = d3.scaleLinear()
+        .domain([0, d3.max(bins, d => d.length)])
+        .nice()
+        .range([height, 0]);
+
+      svg4.selectAll(".bar")
+        .data(bins)
+        .enter().append("rect")
+        .attr("class", "bar")
+        .attr("x", d => xHist(d.x0))
+        .attr("y", d => yHist(d.length))
+        .attr("width", d => xHist(d.x1) - xHist(d.x0) - 1)
+        .attr("height", d => height - yHist(d.length));
+
+      svg4.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(xHist));
+
+      svg4.append("g")
+        .attr("class", "y-axis")
+        .call(d3.axisLeft(yHist));
+
+      svg4.append("text")
+        .attr("x", width / 2)
+        .attr("y", height + 40)
+        .attr("text-anchor", "middle")
+        .text("Interest Rate");
+
+      svg4.append("text")
+        .attr("x", -height / 2)
+        .attr("y", -50)
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .text("Count");
+
+    });
+  </script>
+</body>
+</html>
